@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# ==============================================================================
+#  ARNO Panel Deployment Script
+#  Author: ARNO
+# ==============================================================================
+
+# Exit immediately if a command fails
+set -e
+
+# Color codes for clean, professional terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Ensure script is run with root/sudo privileges
+if [ "$EUID" -ne 0 ]; then
+  log_error "Please run this script using sudo or as root."
+  exit 1
+fi
+
+# Clear screen for a clean presentation
+clear
+
+# Professional ARNO Banner
+echo -e "${CYAN}"
+echo "    █████╗ ██████╗ ███╗   ██╗ ██████╗ "
+echo "   ██╔══██╗██╔══██╗████╗  ██║██╔═══██╗"
+echo "   ███████║██████╔╝██╔██╗ ██║██║   ██║"
+echo "   ██╔══██║██╔══██╗██║╚██╗██║██║   ██║"
+echo "   ██║  ██║██║  ██║██║ ╚████║╚██████╔╝"
+echo "   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ "
+echo "=================================================="
+echo "         INITIALIZING ARNO PANEL SETUP            "
+echo "=================================================="
+echo -e "${NC}"
+
+# 1. System Updates & Prerequisites
+log_info "Updating system package index..."
+apt update -y
+
+log_info "Installing prerequisite packages (curl, git)..."
+apt install -y curl git
+
+# 2. Node.js Environment Setup
+log_info "Configuring Node.js 20.x repository..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+log_info "Installing Node.js..."
+apt install -y nodejs
+
+# Verify installations
+NODE_VER=$(node -v)
+NPM_VER=$(npm -v)
+log_success "Node.js ($NODE_VER) and NPM ($NPM_VER) installed successfully."
+
+# 3. Global Process Manager
+log_info "Installing PM2 globally..."
+npm install -g pm2
+
+# 4. Repository & Application Setup
+log_info "Cloning application repository..."
+if [ -d "Jtg" ]; then
+    log_warn "Directory 'Jtg' already exists. Backing it up..."
+    mv Jtg Jtg_backup_$(date +%F_%T)
+fi
+git clone https://github.com/JishnuTheGamer/Jtg
+
+cd Jtg
+
+log_info "Installing application dependencies..."
+npm install
+
+# 5. Application Initialization & Build
+log_info "Launching user creation interface..."
+# Running this interactively since it requires manual user input
+npm run createuser
+
+log_info "Building production assets..."
+npm run build
+
+log_info "Starting application process via PM2..."
+pm2 start ecosystem.config.cjs
+
+# 6. Finalization
+echo -e "${GREEN}"
+echo "=================================================="
+echo "      DEPLOYMENT SUCCESSFUL | PANEL ONLINE        "
+echo "                 POWERED BY ARNO                  "
+echo "=================================================="
+echo -e "${NC}"
