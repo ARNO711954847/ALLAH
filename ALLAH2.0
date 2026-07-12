@@ -48,7 +48,13 @@ log_info "Updating system package index..."
 apt update -y
 
 log_info "Installing prerequisite packages (curl, git)..."
-apt install -y curl git
+# Fix for the 'Invalid cross-device link' bug if it happens mid-install
+if ! apt install -y curl git; then
+    log_warn "Caught a dpkg cross-device link error. Applying patch..."
+    rm -f /usr/bin/git
+    apt-get install -f -y
+    apt install -y curl git
+fi
 
 # 2. Node.js Environment Setup
 log_info "Configuring Node.js 20.x repository..."
@@ -81,7 +87,6 @@ npm install
 
 # 5. Application Initialization & Build
 log_info "Launching user creation interface..."
-# Running this interactively since it requires manual user input
 npm run createuser
 
 log_info "Building production assets..."
