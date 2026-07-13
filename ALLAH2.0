@@ -43,18 +43,21 @@ echo "         INITIALIZING ARNO PANEL SETUP            "
 echo "=================================================="
 echo -e "${NC}"
 
+# Fix for the 'Invalid cross-device link' bug (Common in Docker/WSL/Pterodactyl environments)
+log_info "Optimizing dpkg configuration for container/overlay filesystems..."
+echo "force-unsafe-io" > /etc/dpkg/dpkg.cfg.d/force-unsafe-io
+
 # 1. System Updates & Prerequisites
 log_info "Updating system package index..."
 apt update -y
 
 log_info "Installing prerequisite packages (curl, git)..."
-# Fix for the 'Invalid cross-device link' bug if it happens mid-install
-if ! apt install -y curl git; then
-    log_warn "Caught a dpkg cross-device link error. Applying patch..."
-    rm -f /usr/bin/git
-    apt-get install -f -y
-    apt install -y curl git
-fi
+# Clear out any broken states left behind from the previous failed run
+dpkg --configure -a || true
+apt-get install -f -y
+
+# Install packages smoothly without link errors
+apt install -y curl git
 
 # 2. Node.js Environment Setup
 log_info "Configuring Node.js 20.x repository..."
